@@ -1,0 +1,48 @@
+{
+  "entities": {
+    "Comparison": {
+      "title": "Comparison",
+      "description": "A saved TCO comparison report",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "createdAt": { "type": "number" },
+        "appleTotal": { "type": "number" },
+        "pcTotal": { "type": "number" },
+        "savings": { "type": "number" },
+        "years": { "type": "number" },
+        "quantity": { "type": "number" },
+        "appleOpts": { "type": "object" },
+        "pcOpts": { "type": "object" },
+        "customCosts": { "type": "array" },
+        "url": { "type": "string" }
+      },
+      "required": ["userId", "createdAt", "appleTotal", "pcTotal", "savings", "years", "quantity"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "A notification for the user",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "User ID of the recipient or 'all' for everyone" },
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "type": { "type": "string", "enum": ["info", "success", "warning", "error"] },
+        "createdAt": { "type": "number" },
+        "isRead": { "type": "boolean" }
+      },
+      "required": ["userId", "title", "content", "createdAt"]
+    }
+  },
+  "firestore": {
+    "comparisons/{comparisonId}": {
+      "schema": { "$ref": "#/entities/Comparison" },
+      "description": "Stores user generated TCO comparisons"
+    },
+    "notifications/{notificationId}": {
+      "schema": { "$ref": "#/entities/Notification" },
+      "description": "System notifications for users"
+    }
+  }
+}

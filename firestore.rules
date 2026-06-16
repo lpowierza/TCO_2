@@ -1,0 +1,91 @@
+// UWAGA BEZPIECZEŃSTWO: funkcja isAdmin() używa tymczasowo hardcoded emaila.
+// Docelowo należy ustawić Custom Claims przez Firebase Admin SDK:
+//   admin.auth().setCustomUserClaims(uid, { admin: true })
+// Po migracji usunąć warunek z email z funkcji isAdmin().
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Auth Helpers
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      // Używa Firebase Custom Claims — ustaw przez Admin SDK:
+      // admin.auth().setCustomUserClaims(uid, { admin: true })
+      // Tymczasowy fallback na email do czasu migracji Custom Claims:
+      return isSignedIn() && (
+        request.auth.token.admin == true ||
+        request.auth.token.email == 'leszek.powierza@gmail.com'
+      );
+    }
+
+    // Type Helpers
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // Comparison Validator
+    function isValidComparison(data) {
+      return data.keys().hasAll(['userId', 'createdAt', 'appleTotal', 'pcTotal', 'savings', 'years', 'quantity', 'appleOpts', 'pcOpts', 'name', 'customCosts']) &&
+             data.userId is string && data.userId.size() <= 128 &&
+             data.name is string && data.name.size() <= 100 &&
+             data.createdAt is number &&
+             data.appleTotal is number &&
+             data.pcTotal is number &&
+             data.savings is number &&
+             data.years is number &&
+             data.quantity is number &&
+             data.appleOpts is map &&
+             data.pcOpts is map &&
+             data.customCosts is list;
+    }
+
+    match /users/{userId} {
+      allow get: if isOwner(userId) || isAdmin();
+      allow list: if isAdmin();
+      allow create, update: if isOwner(userId);
+      allow delete: if isOwner(userId) || isAdmin();
+    }
+
+    match /comparisons/{comparisonId} {
+      // Users can read only their own comparisons, Admins can read all
+      allow get: if isOwner(existing().userId) || isAdmin();
+      allow list: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+
+      // Users can create comparisons, tying it to themselves
+      allow create: if isOwner(incoming().userId) &&
+                     isValidId(comparisonId) &&
+                     isValidComparison(incoming());
+                     
+      allow update: if false; // Comparisons are immutable
+      allow delete: if isOwner(existing().userId);
+    }
+
+    match /notifications/{notificationId} {
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.userId == 'all');
+      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.userId == 'all');
+      allow create: if isAdmin();
+      allow update: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.userId == 'all') && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead']);
+      allow delete: if isAdmin();
+    }
+  }
+}

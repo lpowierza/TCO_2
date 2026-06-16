@@ -1,0 +1,6 @@
+{
+  "name": "Kalkulator TCO",
+  "description": "Kalkulator Total Cost of Ownership do porównywania kosztów notebooków Apple i PC.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}
